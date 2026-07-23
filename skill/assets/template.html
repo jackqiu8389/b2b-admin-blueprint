@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BRAND_NAME 管理后台</title>
+<!-- ============================================================
+  种子模板 — B2B 管理后台 v2
+  ============================================================
+  使用前必须替换的内容（全局搜索以下标记）：
+    BRAND_LOGO_URL  → 你公司的 logo 图片 URL；无图用图标替代
+    BRAND_NAME      → 品牌/产品名称（如 "某某云"）
+    BRAND_SUBTITLE  → 品牌副标题（如 "运营管理平台"）
+    ACCENT_COLOR    → 主色 hex 值（默认 #825cb2）
+
+  本模板集成了以下模式（可直接参考当前项目中的使用方式）：
+    - 顶栏（topbar）：页面标题随导航切换自动更新
+    - 侧边栏（sidebar）：分组导航 + badge
+    - 统计卡片（stat-card）：5 格栅格布局
+    - 图表卡片（chart-card）：Chart.js 折线图骨架
+    - 数据列表（table-card）：含搜索框 + 筛选下拉 + 表格 + 分页
+    - 提醒列表（alert-list）：左侧彩条 + 图标 + 文字
+    - 弹窗（modal）：modal-header / modal-body / modal-footer 三段式
+    - 状态徽标（status-badge）：::before 圆点 + 文字
+    - 自定义下拉（filter-select）：SVG 箭头 + appearance: none
+
+  更多指导：
+    references/layout-patterns.md      — 页面布局模式
+    references/interaction-patterns.md — 交互设计原则
+    references/prd-template.md         — PRD 写作模板
+  ============================================================ -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+/* ─── CSS 变量 — 定制品牌色从这里改 ─── */
+:root {
+  --bg-primary: #f5f5f7;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8f7fb;
+  --bg-sidebar: #ffffff;
+  --bg-input: #f5f5f7;
+  --border-color: #e8e0f2;
+  --border-light: #f0ecf6;
+  --text-primary: #1a1a2e;
+  --text-secondary: #4a4a6a;
+  --text-muted: #8e8ea0;
+  --accent: #825cb2;
+  --accent-light: #a07fd6;
+  --accent-cyan: #06b6d4;
+  --accent-green: #22c55e;
+  --accent-orange: #f59e0b;
+  --accent-red: #ef4444;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --radius: 8px;
+  --radius-lg: 12px;
+  --transition: all 0.2s ease;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* ─── Layout ─── */
+.app-container { display: flex; height: 100vh; }
+
+/* ─── Sidebar ─── */
+.sidebar {
+  width: 240px; min-width: 240px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  display: flex; flex-direction: column;
+  padding: 16px; overflow-y: auto;
+  flex-shrink: 0; z-index: 10;
+}
+.sidebar-header { display: flex; align-items: center; gap: 10px; padding-bottom: 20px; border-bottom: 1px solid var(--border-light); margin-bottom: 12px; }
+.sidebar-logo { width: 110px; height: 32px; background: url('BRAND_LOGO_URL') no-repeat left center; background-size: contain; flex-shrink: 0; }
+.sidebar-title { font-size: 14px; font-weight: 600; color: var(--text-primary); line-height: 1.3; }
+.sidebar-title small { display: block; font-size: 11px; color: var(--text-muted); font-weight: 400; }
+.sidebar-nav { display: flex; flex-direction: column; flex: 1; overflow-y: auto; padding: 8px; }
+.nav-section { margin-bottom: 4px; }
+.nav-section-title { padding: 8px 12px 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 600; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 6px; cursor: pointer; transition: var(--transition); color: var(--text-secondary); font-size: 13px; text-decoration: none; user-select: none; }
+.nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
+.nav-item.active { background: rgba(130, 92, 178, 0.1); color: var(--accent); }
+.nav-item i { width: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+.nav-item .badge { margin-left: auto; background: var(--accent-red); font-size: 10px; padding: 1px 6px; font-weight: 600; color: #fff; border-radius: 10px; min-width: 18px; text-align: center; line-height: 1.6; }
+
+/* ─── Main Content ─── */
+.main-content { display: flex; flex: 1; flex-direction: column; overflow: hidden; }
+
+/* ─── Top Bar ─── */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+.topbar-title { font-size: 16px; font-weight: 600; }
+.topbar-right { display: flex; align-items: center; gap: 16px; }
+.topbar-btn {
+  width: 34px; height: 34px; border-radius: 8px;
+  border: none; background: transparent;
+  color: var(--text-secondary); cursor: pointer;
+  font-size: 15px; position: relative;
+}
+.topbar-btn:hover { background: var(--bg-card); color: var(--text-primary); }
+.topbar-btn .dot { position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent-red); }
+.topbar-avatar {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-light));
+  font-size: 13px; color: #fff; cursor: pointer;
+}
+
+/* ─── Page Content ─── */
+.page-content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+.page { display: none; }
+.page.active { display: block; }
+
+/* ─── Stat Cards ─── */
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.stat-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 20px; }
+.stat-card:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+.stat-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.stat-card-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; background: rgba(130, 92, 178, 0.1); color: var(--accent); }
+.stat-card-value { font-size: 28px; font-weight: 700; line-height: 1.2; }
+.stat-card-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+.stat-card-trend { font-size: 12px; display: inline-flex; align-items: center; gap: 2px; padding: 2px 6px; border-radius: 4px; margin-top: 8px; }
+.stat-card-trend.up { background: rgba(34, 197, 94, 0.1); color: var(--accent-green); }
+.stat-card-trend.down { background: rgba(239, 68, 68, 0.1); color: var(--accent-red); }
+.stat-card-sub { font-size: 12px; margin-top: 6px; color: var(--text-secondary); display: flex; gap: 12px; }
+.stat-card-sub span { display: inline-flex; align-items: center; gap: 3px; }
+
+/* ─── Chart Card ─── */
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px; margin-bottom: 16px;
+}
+.chart-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+.chart-card-title { font-size: 13px; font-weight: 700; }
+.chart-card-title::before { content: ''; display: inline-block; width: 3px; height: 13px; background: var(--accent); border-radius: 2px; margin-right: 8px; vertical-align: -2px; }
+.chart-card-actions { display: flex; gap: 4px; }
+.chart-btn {
+  padding: 3px 10px; border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: transparent; color: var(--text-muted);
+  font-size: 11px; font-weight: 500; cursor: pointer;
+  transition: var(--transition); line-height: 1.6;
+}
+.chart-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.chart-btn:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+.chart-container { position: relative; height: 240px; }
+
+/* ─── Section Headers ─── */
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.section-header h3 { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.section-header h3 i { color: var(--accent); }
+
+/* ─── Buttons ─── */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer; transition: var(--transition); }
+.btn:hover { border-color: var(--text-muted); color: var(--text-primary); }
+.btn-xs { padding: 3px 8px; font-size: 10px; border-radius: 4px; }
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { background: var(--accent-light); color: #fff; }
+
+/* ─── Table Card ─── */
+.table-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 20px; }
+.table-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 8px; }
+.table-header-left { display: flex; align-items: center; gap: 12px; }
+.table-title { font-size: 14px; font-weight: 600; }
+.table-header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.table-footer { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-top: 1px solid var(--border-color); font-size: 12px; color: var(--text-muted); }
+
+/* ─── Search Box ─── */
+.search-box { display: inline-flex; align-items: center; gap: 6px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 6px; padding: 0 10px; }
+.search-box i { color: var(--text-muted); font-size: 13px; }
+.search-box input { background: none; border: none; outline: none; color: var(--text-primary); font-size: 13px; padding: 7px 0; width: 180px; }
+ .search-box input::placeholder { color: var(--text-muted); }
+ 
+ /* ─── Custom Select — Filter Select (inline toolbar) ─── */
+ /* Compact, same height as search inputs/buttons in horizontal toolbars */
+ .filter-select {
+   background: var(--bg-input);
+   border: 1px solid var(--border-color);
+   border-radius: 6px;
+   padding: 0 28px 0 10px;
+   color: var(--text-secondary);
+   font-size: 13px;
+   height: 33px;
+   line-height: 33px;
+   cursor: pointer;
+   outline: none;
+   -webkit-appearance: none;
+   -moz-appearance: none;
+   appearance: none;
+   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e8ea0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+   background-repeat: no-repeat;
+   background-position: right 10px center;
+   min-width: 100px;
+ }
+ .filter-select:hover { border-color: var(--accent); }
+ .filter-select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(130,92,178,0.15); }
+ 
+ /* ─── Custom Select — Form Select (modals/panels) ─── */
+ /* Taller with proper padding for form rows. Use inside modal-body, settings, forms. */
+ .form-select {
+   background: var(--bg-input);
+   border: 1px solid var(--border-color);
+   border-radius: 6px;
+   padding: 8px 28px 8px 12px;
+   color: var(--text-secondary);
+   font-size: 13px;
+   width: 100%;
+   height: 36px;
+   line-height: 1.5;
+   cursor: pointer;
+   outline: none;
+   -webkit-appearance: none;
+   -moz-appearance: none;
+   appearance: none;
+   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e8ea0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+   background-repeat: no-repeat;
+   background-position: right 10px center;
+ }
+ .form-select:hover { border-color: var(--accent); }
+ .form-select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(130,92,178,0.15); }
+ 
+ /* ─── Quick Filter Buttons ─── */
+ /* Button groups for common filter values alongside dropdown filters */
+ .rank-filter-group { display: flex; align-items: center; gap: 4px; }
+ .rank-filter-btn {
+   padding: 5px 14px;
+   border-radius: 6px;
+   border: 1px solid var(--border-color);
+   background: var(--bg-secondary);
+   color: var(--text-secondary);
+   cursor: pointer;
+   font-size: 12px;
+   font-weight: 500;
+   transition: var(--transition);
+   line-height: 1.4;
+ }
+ .rank-filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+ .rank-filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+ 
+ /* ─── Stats Summary Bar (management/CRUD pages) ─── */
+ .kw-stats {
+   display: flex;
+   align-items: center;
+   gap: 0;
+   padding: 14px 24px;
+   border-bottom: 1px solid var(--border-color);
+   font-size: 14px;
+   background: var(--bg-card-hover);
+ }
+ .kw-stat-item {
+   padding: 0 20px;
+   border-right: 1px solid rgba(0,0,0,0.08);
+   line-height: 1;
+ }
+ .kw-stat-item:last-child { border-right: none; }
+ .kw-stat-item strong { margin-right: 6px; color: var(--text-primary); }
+ .kw-stat-item span:last-child { font-weight: 600; margin-left: 4px; }
+ .stat-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+ .stat-dot.active { background: var(--accent-green); }
+ .stat-dot.warning { background: var(--accent-orange); }
+ .stat-dot.inactive { background: var(--text-muted); }
+ 
+ /* ─── Filter Input (management page filter bar) ─── */
+ .kw-filters {
+   display: flex;
+   align-items: center;
+   gap: 8px;
+   padding: 10px 20px;
+   border-bottom: 1px solid var(--border-color);
+   flex-wrap: wrap;
+ }
+ .filter-input {
+   padding: 6px 10px;
+   background: var(--bg-input);
+   border: 1px solid var(--border-color);
+   border-radius: 6px;
+   color: var(--text-primary);
+   font-size: 12px;
+   outline: none;
+   height: 32px;
+   box-sizing: border-box;
+   min-width: 100px;
+ }
+ .filter-input:focus { border-color: var(--accent); }
+ .filter-input::placeholder { color: var(--text-muted); }
+ 
+ /* ─── Data Table ─── */
+ .data-table { width: 100%; border-collapse: collapse; }
+.data-table th { padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); white-space: nowrap; background: var(--bg-secondary); }
+.data-table td { padding: 11px 16px; font-size: 13px; border-bottom: 1px solid var(--border-color); color: var(--text-secondary); }
+.data-table tr:hover td { background: var(--bg-card-hover); }
+.data-table tr:last-child td { border-bottom: none; }
+
+/* ─── Pagination ─── */
+.pagination { display: flex; gap: 4px; }
+.page-btn { width: 28px; height: 28px; border-radius: 4px; border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.page-btn:hover { border-color: var(--text-muted); color: var(--text-primary); }
+.page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ─── Status Badges ─── */
+.status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+.status-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
+.status-badge.active { background: rgba(34,197,94,0.1); color: var(--accent-green); }
+.status-badge.active::before { background: var(--accent-green); }
+.status-badge.warning { background: rgba(245,158,11,0.1); color: var(--accent-orange); }
+.status-badge.warning::before { background: var(--accent-orange); }
+.status-badge.inactive { background: rgba(107,114,128,0.1); color: var(--text-muted); }
+.status-badge.inactive::before { background: var(--text-muted); }
+.status-badge.error { background: rgba(239,68,68,0.1); color: var(--accent-red); }
+.status-badge.error::before { background: var(--accent-red); }
+.cat-tag { display: inline-flex; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; background: rgba(130,92,178,0.1); color: var(--accent); }
+
+/* ─── Rank Dot ─── */
+.rank-dot { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 26px; border-radius: 4px; font-size: 12px; font-weight: 600; padding: 0 6px; }
+.rank-dot.top1 { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+.rank-dot.top5 { background: rgba(245,158,11,0.15); color: var(--accent-orange); }
+.rank-dot.top10 { background: rgba(130,92,178,0.1); color: var(--accent); }
+.rank-dot.top50 { background: rgba(34,197,94,0.1); color: var(--accent-green); }
+.rank-dot.none { background: rgba(142,142,160,0.1); color: var(--text-muted); }
+
+/* ─── Rank Change ─── */
+.rank-change { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; font-size: 13px; }
+.rank-change.up { color: var(--accent-green); }
+.rank-change.down { color: var(--accent-red); }
+.rank-change.same { color: var(--text-muted); font-weight: 400; }
+
+/* ─── Modal ─── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; display: none; align-items: center; justify-content: center; }
+.modal-overlay.show { display: flex; }
+.modal { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); width: 520px; max-height: 80vh; overflow-y: auto; }
+.modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border-color); }
+.modal-title { font-size: 15px; font-weight: 600; }
+.modal-close { width: 28px; height: 28px; border-radius: 6px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+.modal-close:hover { background: var(--bg-primary); color: var(--text-primary); }
+.modal-body { padding: 20px; }
+.modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border-color); }
+
+/* ─── Form ─── */
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px; }
+.form-input { width: 100%; padding: 8px 12px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 13px; outline: none; }
+.form-input:focus { border-color: var(--accent); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ─── Alert List ─── */
+.alert-list { display: flex; flex-direction: column; gap: 8px; }
+.alert-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; background: var(--bg-primary); border-radius: 6px; border-left: 3px solid var(--accent); }
+.alert-item.warning { border-left-color: var(--accent-orange); }
+.alert-item.error { border-left-color: var(--accent-red); }
+.alert-icon { font-size: 14px; margin-top: 1px; flex-shrink: 0; }
+.alert-content { flex: 1; }
+.alert-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+.alert-desc { font-size: 12px; color: var(--text-muted); }
+.alert-time { font-size: 11px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+
+/* ─── Progress Bar ─── */
+.progress-bar { width: 60px; height: 4px; background: var(--border-light); border-radius: 2px; margin-top: 4px; }
+.progress-fill { height: 100%; border-radius: 2px; }
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+
+/* ─── Responsive ─── */
+@media (max-width: 920px) {
+  .sidebar { width: 60px; min-width: 60px; padding: 12px 8px; }
+  .sidebar-header { flex-direction: column; align-items: center; }
+  .sidebar-logo { width: 32px; }
+  .sidebar-title { display: none; }
+  .nav-item span { display: none; }
+  .nav-section-title { display: none; }
+  .nav-item { justify-content: center; padding: 9px; }
+  .page-content { padding: 16px; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<div class="app-container">
+  <!-- ─── 侧边栏 ─── -->
+  <!-- ★ 定制导航：修改 nav-section 和 nav-item 的数量和名称 -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <!-- ★ 无 logo 图片时，用图标替代：
+           .sidebar-logo { width: 36px; height: 36px; border-radius: 8px; background: var(--accent); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; flex-shrink: 0; }
+           .sidebar-logo -> <i class="fas fa-chart-line"></i>
+      -->
+      <div class="sidebar-logo"></div>
+      <div class="sidebar-title">
+        BRAND_NAME
+        <small>BRAND_SUBTITLE</small>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-section-title">概览</div>
+        <div class="nav-item active" data-page="dashboard">
+          <i class="fas fa-th-large"></i><span>数据看板</span>
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">业务模块</div>
+        <div class="nav-item" data-page="page1">
+          <i class="fas fa-chart-line"></i><span>业务数据一</span>
+          <span class="badge">12</span>
+        </div>
+        <div class="nav-item" data-page="page2">
+          <i class="fas fa-list-ol"></i><span>业务数据二</span>
+        </div>
+        <!-- ★ 低频率功能 - v2 时取消注释
+        <div class="nav-item" data-page="reports">
+          <i class="fas fa-file-alt"></i><span>数据报表</span>
+        </div>
+        -->
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">运营管理</div>
+        <div class="nav-item" data-page="resources">
+          <i class="fas fa-tags"></i><span>资源管理</span>
+        </div>
+        <div class="nav-item" data-page="accounts">
+          <i class="fas fa-users"></i><span>账号管理</span>
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">系统</div>
+        <div class="nav-item" data-page="alerts">
+          <i class="fas fa-bell"></i><span>异常提醒</span>
+          <span class="badge">3</span>
+        </div>
+        <div class="nav-item" data-page="settings">
+          <i class="fas fa-cog"></i><span>系统设置</span>
+        </div>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- ─── 主内容区 ─── -->
+  <div class="main-content">
+
+    <!-- 顶栏 -->
+    <!-- ★ 定制顶栏：修改默认标题、通知行为、用户信息 -->
+    <div class="topbar">
+      <div class="topbar-title" id="topbarTitle">数据看板</div>
+      <div class="topbar-right">
+        <button class="topbar-btn" title="通知">
+          <i class="fas fa-bell"></i>
+          <span class="dot"></span>
+        </button>
+        <div class="topbar-avatar" title="admin">A</div>
+      </div>
+    </div>
+
+    <!-- 页面内容 -->
+    <div class="page-content">
+
+      <!-- ====== 页面：数据看板 ====== -->
+      <!-- ★ 定制看板：修改 stat-card 的内容和数量，替换为实际的业务指标 -->
+      <div class="page active" id="page-dashboard">
+
+        <!-- 统计卡片行 -->
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-card-header"><div class="stat-card-icon"><i class="fas fa-tag"></i></div></div>
+            <div class="stat-card-value">1,284</div>
+            <div class="stat-card-label">管理条目总数</div>
+            <div class="stat-card-trend up"><i class="fas fa-arrow-up"></i> +12.5%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-header"><div class="stat-card-icon" style="background:rgba(6,182,212,0.1);color:var(--accent-cyan);"><i class="fas fa-check-circle"></i></div></div>
+            <div class="stat-card-value">92.3%</div>
+            <div class="stat-card-label">正常率</div>
+            <div class="stat-card-trend up"><i class="fas fa-arrow-up"></i> +3.1%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-header"><div class="stat-card-icon" style="background:rgba(34,197,94,0.1);color:var(--accent-green);"><i class="fas fa-chart-bar"></i></div></div>
+            <div class="stat-card-value">3.2</div>
+            <div class="stat-card-label">平均指标</div>
+            <div class="stat-card-trend up"><i class="fas fa-arrow-up"></i> +0.8%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-header"><div class="stat-card-icon" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);"><i class="fas fa-exclamation-triangle"></i></div></div>
+            <div class="stat-card-value">23</div>
+            <div class="stat-card-label">待处理异常</div>
+            <div class="stat-card-trend down"><i class="fas fa-arrow-down"></i> +5</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-header"><div class="stat-card-icon" style="background:rgba(239,68,68,0.1);color:var(--accent-red);"><i class="fas fa-times-circle"></i></div></div>
+            <div class="stat-card-value">7</div>
+            <div class="stat-card-label">异常 / 待处理</div>
+          </div>
+        </div>
+
+        <!-- 重点关注数据 -->
+        <!-- ★ 替换为实际的业务重点关注数据 -->
+        <div class="section-header">
+          <h3><i class="fas fa-bolt"></i>重点关注</h3>
+          <select class="filter-select">
+            <option>全部</option>
+            <option>上升</option>
+            <option>下降</option>
+          </select>
+        </div>
+        <div class="table-card" style="margin-bottom:20px;">
+          <table class="data-table">
+            <thead><tr><th style="width:44px;">#</th><th>名称</th><th>分类</th><th>当前值</th><th>上周</th><th>趋势</th><th style="width:50px;"></th></tr></thead>
+            <tbody>
+              <!-- ★ 替换为实际数据 -->
+              <tr><td><span style="font-weight:500;">1</span></td><td><span style="font-weight:500;">热门项目 A</span></td><td><span class="cat-tag">分类一</span></td><td><span class="rank-dot top5">第3</span></td><td>第5</td><td><span class="rank-change up"><i class="fas fa-arrow-up"></i> +2</span></td><td><button class="btn btn-xs"><i class="fas fa-chart-simple"></i></button></td></tr>
+              <tr><td>2</td><td>热门项目 B</td><td><span class="cat-tag">分类二</span></td><td><span class="rank-dot top1">第1</span></td><td>第1</td><td><span class="rank-change same"><i class="fas fa-minus"></i> 持平</span></td><td><button class="btn btn-xs"><i class="fas fa-chart-simple"></i></button></td></tr>
+              <tr><td>3</td><td>热门项目 C</td><td><span class="cat-tag">分类一</span></td><td><span class="rank-dot none">未出现</span></td><td>第8</td><td><span class="rank-change down"><i class="fas fa-arrow-down"></i> 跌出50</span></td><td><button class="btn btn-xs"><i class="fas fa-chart-simple"></i></button></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 完整数据表格 -->
+        <div class="section-header">
+          <h3><i class="fas fa-list"></i>全部数据</h3>
+          <select class="filter-select">
+            <option>全部分类</option>
+            <option>分类一</option>
+            <option>分类二</option>
+            <option>分类三</option>
+          </select>
+        </div>
+        <div class="table-card">
+          <table class="data-table">
+            <thead><tr><th>名称</th><th>分类</th><th>负责人</th><th>状态</th><th>更新时间</th></tr></thead>
+            <tbody>
+              <!-- ★ 替换为实际数据 -->
+              <tr><td><span style="font-weight:500;">示例条目 A</span></td><td><span class="cat-tag">分类一</span></td><td>张三</td><td><span class="status-badge active">正常</span></td><td>2026-07-15</td></tr>
+              <tr><td><span style="font-weight:500;">示例条目 B</span></td><td><span class="cat-tag">分类二</span></td><td>李四</td><td><span class="status-badge warning">需关注</span></td><td>2026-07-14</td></tr>
+              <tr><td><span style="font-weight:500;">示例条目 C</span></td><td><span class="cat-tag">分类一</span></td><td>王五</td><td><span class="status-badge error">异常</span></td><td>2026-07-13</td></tr>
+            </tbody>
+          </table>
+          <div class="table-footer">
+            <span>显示 1-3 条，共 3 条</span>
+            <div class="pagination">
+              <button class="page-btn">&lt;</button>
+              <button class="page-btn active">1</button>
+              <button class="page-btn">2</button>
+              <button class="page-btn">&gt;</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== 页面：业务数据一 ====== -->
+      <div class="page" id="page-page1">
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-header-left"><span class="table-title">列表标题</span></div>
+            <div class="table-header-right">
+              <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="搜索...">
+              </div>
+              <select class="filter-select"><option>全部状态</option><option>正常</option><option>异常</option></select>
+              <button class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> 新增</button>
+            </div>
+          </div>
+          <table class="data-table">
+            <thead><tr><th>ID</th><th>名称</th><th>类型</th><th>状态</th><th style="width:70px;">操作</th></tr></thead>
+            <tbody>
+              <tr><td>001</td><td>示例条目 A</td><td>类型一</td><td><span class="status-badge active">正常</span></td><td><button class="btn btn-xs"><i class="fas fa-edit"></i></button></td></tr>
+              <tr><td>002</td><td>示例条目 B</td><td>类型二</td><td><span class="status-badge error">异常</span></td><td><button class="btn btn-xs"><i class="fas fa-edit"></i></button></td></tr>
+            </tbody>
+          </table>
+          <div class="table-footer">
+            <span>显示 1-2 条</span>
+            <div class="pagination">
+              <button class="page-btn active">1</button>
+              <button class="page-btn">2</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== 页面：业务数据二 ====== -->
+      <div class="page" id="page-page2">
+        <p style="color:var(--text-muted);padding:20px;">此页面待开发。参考 layout-patterns.md 添加搜索/筛选和数据表格。</p>
+      </div>
+
+      <!-- ====== 页面：资源管理 ====== -->
+      <div class="page" id="page-resources">
+        <div class="table-card" style="padding:24px;">
+          <!-- ★ 示例：Chart.js 图表卡片骨架 -->
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <span class="chart-card-title">趋势图表</span>
+              <div class="chart-card-actions">
+                <button class="chart-btn active">7天</button>
+                <button class="chart-btn">14天</button>
+                <button class="chart-btn">30天</button>
+              </div>
+            </div>
+            <div class="chart-container"><canvas id="trendChart"></canvas></div>
+          </div>
+          <p style="color:var(--text-muted);font-size:14px;">参考 interaction-patterns.md 构建完整功能。</p>
+        </div>
+      </div>
+
+      <!-- ====== 页面：账号管理 ====== -->
+      <div class="page" id="page-accounts">
+        <p style="color:var(--text-muted);padding:20px;">此页面待开发。</p>
+      </div>
+
+      <!-- ====== 页面：异常提醒 ====== -->
+      <div class="page" id="page-alerts">
+        <div class="table-card" style="padding:20px;">
+          <!-- ★ 示例：提醒列表 -->
+          <div class="alert-list">
+            <div class="alert-item warning">
+              <div class="alert-icon" style="color:var(--accent-orange);"><i class="fas fa-exclamation-triangle"></i></div>
+              <div class="alert-content">
+                <div class="alert-title">需要关注的提醒</div>
+                <div class="alert-desc">警告类型 · 相关关键词</div>
+              </div>
+              <div class="alert-time">2026-07-15</div>
+              <button class="btn btn-xs btn-primary" style="flex-shrink:0;">处理</button>
+            </div>
+            <div class="alert-item error">
+              <div class="alert-icon" style="color:var(--accent-red);"><i class="fas fa-shield-alt"></i></div>
+              <div class="alert-content">
+                <div class="alert-title">异常错误提醒</div>
+                <div class="alert-desc">错误类型 · 相关关键词</div>
+              </div>
+              <div class="alert-time">2026-07-14</div>
+              <button class="btn btn-xs" style="flex-shrink:0;">已处理</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== 页面：系统设置 ====== -->
+      <div class="page" id="page-settings">
+        <div class="table-card" style="padding:24px;">
+          <div class="form-group">
+            <label class="form-label">设置项一</label>
+            <input class="form-input" type="text" style="width:240px;" placeholder="默认值">
+          </div>
+          <div class="form-group">
+            <label class="form-label">设置项二</label>
+            <input class="form-input" type="number" style="width:240px;" value="50">
+          </div>
+          <button class="btn btn-primary"><i class="fas fa-save"></i> 保存设置</button>
+        </div>
+      </div>
+
+    </div><!-- /page-content -->
+  </div><!-- /main-content -->
+</div><!-- /app-container -->
+
+<!-- ─── Modal 示例 ─── -->
+<!-- ★ 复制此结构创建新弹窗，修改 id 和内容 -->
+<div class="modal-overlay" id="exampleModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">弹窗标题</span>
+      <button class="modal-close" onclick="closeModal('exampleModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">字段名称</label>
+        <input class="form-input" type="text" placeholder="输入内容">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">字段一</label>
+          <input class="form-input" type="text" placeholder="值">
+        </div>
+        <div class="form-group">
+          <label class="form-label">字段二</label>
+          <select class="form-input">
+            <option>选项一</option>
+            <option>选项二</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('exampleModal')">取消</button>
+      <button class="btn btn-primary"><i class="fas fa-check"></i> 确认</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//  ★ 页面切换（顶栏标题联动）
+//  ★ 添加新页面时，在 pageTitles 中加上映射
+// ════════════════════════════════════════════
+
+var pageTitles = {
+  dashboard: '数据看板',
+  page1: '业务数据一',
+  page2: '业务数据二',
+  resources: '资源管理',
+  accounts: '账号管理',
+  alerts: '异常提醒',
+  settings: '系统设置'
+};
+
+document.querySelectorAll('.nav-item').forEach(function(item) {
+  item.addEventListener('click', function() {
+    var page = this.dataset.page;
+    document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+    this.classList.add('active');
+    document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+    document.getElementById('page-' + page).classList.add('active');
+    updateTopbarTitle(page);
+  });
+});
+
+function updateTopbarTitle(page) {
+  var el = document.getElementById('topbarTitle');
+  if (el) el.textContent = pageTitles[page] || page;
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+// ════════════════════════════════════════════
+//  ★ Chart.js 示例 — 折线图
+//  在 resources 页面的 canvas id="trendChart" 中渲染
+// ════════════════════════════════════════════
+
+document.addEventListener('DOMContentLoaded', function() {
+  var canvas = document.getElementById('trendChart');
+  if (!canvas) return;
+
+  var labels = [];
+  var data = [];
+  var now = new Date();
+  for (var i = 6; i >= 0; i--) {
+    var d = new Date(now);
+    d.setDate(d.getDate() - i);
+    labels.push((d.getMonth() + 1) + '-' + d.getDate());
+    data.push(Math.floor(Math.random() * 15) + 5);
+  }
+
+  new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '示例指标',
+        data: data,
+        borderColor: '#825CB2',
+        backgroundColor: function(c) {
+          if (!c.chart.chartArea) return 'rgba(130,92,178,0.15)';
+          var t = c.chart.chartArea.top, b = c.chart.chartArea.bottom;
+          var g = c.chart.ctx.createLinearGradient(0, t, 0, b);
+          g.addColorStop(0, 'rgba(130,92,178,0.35)');
+          g.addColorStop(1, 'rgba(130,92,178,0)');
+          return g;
+        },
+        fill: true,
+        tension: 0.35,
+        borderWidth: 2.5,
+        pointRadius: 4,
+        pointBackgroundColor: '#825CB2',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 1.5
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 600, easing: 'easeOutQuart' },
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8e8ea0', font: { size: 10 } }, grid: { color: 'rgba(42,49,69,0.06)' } },
+        y: { ticks: { color: '#8e8ea0', font: { size: 10 } }, grid: { color: 'rgba(42,49,69,0.06)' } }
+      }
+    }
+  });
+});
+</script>
+</body>
+</html>
